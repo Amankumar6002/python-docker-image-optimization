@@ -34,8 +34,14 @@ def create_note():
     if not isinstance(payload, dict):
         return jsonify({"error": "Request body must be a JSON object."}), 400
 
-    title = str(payload.get("title", "")).strip()
-    description = str(payload.get("description", "")).strip()
+    title = payload.get("title")
+    description = payload.get("description")
+
+    if not isinstance(title, str) or not isinstance(description, str):
+        return jsonify({"error": "Title and description must be strings."}), 400
+
+    title = title.strip()
+    description = description.strip()
 
     if not title or not description:
         return jsonify({"error": "Both title and description are required."}), 400

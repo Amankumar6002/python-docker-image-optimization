@@ -1,45 +1,60 @@
 # Release Checklist
 
-## Verified
-- [x] Flask API and PostgreSQL integration are configured through environment variables.
-- [x] Baseline Dockerfile uses `python:3.12` and installs runtime plus development requirements.
-- [x] Baseline copies both `requirements.txt` and `requirements-dev.txt`.
-- [x] Baseline does not copy `tests/`, which `.dockerignore` excludes.
-- [x] Optimized Dockerfile uses Python slim multi-stage build and runtime-only dependencies.
-- [x] Optimized runtime uses the non-root `app` user and Gunicorn.
-- [x] `.dockerignore` excludes Git data, virtual environments, caches, tests, env files, local DB files, and temporary files while retaining files needed for builds.
-- [x] Baseline image build succeeded.
-- [x] Optimized image build succeeded.
-- [x] Compose PostgreSQL and optimized app reported healthy.
-- [x] Baseline and optimized app containers returned success for `/health` and `/ready`.
-- [x] Both images created, listed, and deleted notes; nonexistent deletion returned HTTP 404.
+Verification performed on 2026-11-11. Checkboxes represent completed work supported by local or remote evidence.
 
-## Measured local Docker image sizes
-Measured with `docker image inspect`:
+## Source and application
+- [x] Existing Flask app preserved; title/description types are validated as strings.
+- [x] App and tests compile with `python -m compileall app tests`.
+- [x] Dependencies use separate runtime and development requirements.
+- [x] Parameterized PostgreSQL statements remain in use.
+- [x] Invalid input and missing-note responses tested.
+- [x] Windows local entry point is `python -m app`; Linux containers use Gunicorn.
 
-- Baseline: 1,631,085,220 bytes (1,631.09 MB / 1,555.52 MiB)
-- Optimized: 220,181,206 bytes (220.18 MB / 209.98 MiB)
-- Saved: 1,410,904,014 bytes (1,410.90 MB / 1,345.54 MiB)
-- Reduction: 86.50%
+## Docker
+- [x] Docker Linux engine available.
+- [x] Baseline build passes with both requirements files copied.
+- [x] Baseline does not copy the ignored `tests/` directory.
+- [x] Optimized multi-stage image builds successfully using Python Slim.
+- [x] Runtime dependencies only; pytest and gcc absent from optimized image.
+- [x] Optimized image runs as non-root user `app` (UID 999).
+- [x] Gunicorn command, exposed port, and health check inspected.
+- [x] Image comparison PowerShell script passes and rejects missing tags.
+- [x] Inspect-based baseline/optimized comparison measured: 1,631,085,255 bytes vs 220,181,283 bytes.
+- [x] Saved 1,410,903,972 bytes (1,410.90 MB / 1,345.54 MiB), or 86.50%.
 
-These are local Docker image inspect sizes (uncompressed layer totals), not compressed registry sizes. The `docker images` output reported 1.63GB / 220MB disk usage and 419MB / 53.4MB content size. Those are different Docker storage measures.
+## PostgreSQL and Compose
+- [x] PostgreSQL service running and healthy.
+- [x] Application service running and healthy.
+- [x] Application database readiness confirmed connected.
+- [x] Compose config uses `db` service hostname and health-based startup dependency.
+- [x] Named volume `python-docker-image-optimization_postgres_data` confirmed and retained.
+- [x] API note persisted across app-only restart; only the test note was deleted.
 
-## Reproduce the verification
-```powershell
-docker build -f Dockerfile.baseline -t python-image-optimization:baseline .
-docker build -f Dockerfile -t python-image-optimization:optimized .
-docker image inspect python-image-optimization:baseline --format='{{.Size}}'
-docker image inspect python-image-optimization:optimized --format='{{.Size}}'
-docker compose up --build -d
-docker compose ps
-docker compose logs app
-docker compose logs db
-```
+## Testing
+- [x] Docker-based pytest: 13 passed, 0 failed, exit code 0.
+- [x] Live PostgreSQL readiness and notes CRUD integration tests passed.
+- [x] Both baseline and optimized running containers exercised against PostgreSQL.
+- [x] Health, readiness, invalid input (400), and missing note (404) verified.
+- [x] `python -m compileall app tests` passed.
+- [x] GitHub Actions workflow config includes Python 3.12 and PostgreSQL 16 service.
+- [ ] Confirm GitHub Actions run for the final commit after push.
 
-## Remaining release checks
-- [ ] Confirm intended GitHub repository remote and push the verified changes without force-pushing.
-- [ ] Confirm GitHub Actions test workflow status after push.
-- [ ] Replace development-only credentials before any non-local deployment.
-- [ ] Re-run image measurements after changing pinned dependencies or base image versions.
+## Security and repository
+- [x] `.env`, `.venv`, Python caches, and local DB files excluded by Git ignore rules.
+- [x] `.env`, `.venv`, tests, and local DB files excluded from Docker build context where appropriate.
+- [x] No committed live secrets found in the source scan.
+- [x] `.env.example` uses development-only placeholder values.
+- [ ] Review and configure production secrets outside source control before deploying beyond local development.
 
-The existing Compose PostgreSQL volume was retained; do not remove it during cleanup if it may contain user data.
+## Documentation and publication
+- [x] README describes architecture, Windows and Linux execution, Docker build/size measurement, APIs, tests, and measured result.
+- [x] `PROJECT_FINAL_REPORT.md` records evidence and outstanding items.
+- [x] `compare_images.ps1` documents and reproduces inspect-based size comparison.
+- [ ] Commit and push reviewed changes to existing `main` branch.
+- [ ] Verify remote commit and latest workflow result.
+
+## Measurement definitions
+
+The reported sizes use `docker image inspect ... --format='{{.Size}}'`. These are local uncompressed layer totals, not compressed registry sizes or Docker's local disk-use accounting. MB uses 1,000,000 bytes; MiB uses 1,048,576 bytes.
+
+Do not delete `python-docker-image-optimization_postgres_data` or run `docker compose down -v` during cleanup.

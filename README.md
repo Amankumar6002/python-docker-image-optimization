@@ -1,153 +1,249 @@
-# Image Optimization (Python) – Reducing Docker Image Size Using Multi-Stage Builds
+# Python Docker Image Optimization
 
-## Overview
+**Reducing Docker image size with Python Slim images and multi-stage builds**
 
-This project demonstrates how to reduce a Python Docker image from a large, bloated baseline to a much smaller, production-ready optimized image using a slim base image, a multi-stage build, and careful dependency management.
+This project is a small Flask REST API backed by PostgreSQL. It compares a deliberately unoptimized single-stage Docker image with a multi-stage production image built on `python:3.12-slim`.
 
-## Problem statement
+## Objectives
 
-A Python Flask backend with PostgreSQL was originally packaged using a large Docker image and included development dependencies. The goal is to shrink the image size while preserving the same application behavior and PostgreSQL connectivity.
+- Keep the same Flask and PostgreSQL behavior in both images.
+- Exclude development packages and build-only files from the optimized runtime.
+- Run the optimized Linux container as a non-root user under Gunicorn.
+- Measure local Docker image sizes from Docker inspection rather than estimating them.
 
-## Technologies used
+The original 1.5 GB scenario is a reference point, not a promised baseline result. The actual sizes depend on the resolved base image, architecture, Docker version, and installed packages.
 
-- Python 3.12
-- Flask
-- PostgreSQL
-- Docker
-- Docker Compose
-- pytest
-- Gunicorn
+## Stack and features
+
+- Python 3.12, Flask, Gunicorn and psycopg 3
+- PostgreSQL 16 Alpine
+- Docker, Docker Compose, PowerShell and pytest
+- Health and database-readiness endpoints
+- Parameterized SQL, note validation and CRUD API
+- Compose health checks and a persistent named database volume
+- GitHub Actions workflow with a PostgreSQL service
 
 ## Architecture
 
-The application exposes a small REST API and checks database readiness before serving requests. It runs in a container and connects to a PostgreSQL container over the Docker Compose network.
+```text
+PowerShell / HTTP client
+          |
+          v
+Flask + Gunicorn container (port 5000)
+          |
+          | Compose network; DB_HOST=db
+          v
+PostgreSQL container (port 5432)
+          |
+          v
+Named volume: postgres_data
+```
 
-## Folder structure
+`Dockerfile.baseline` packages runtime and pytest dependencies in one full Python image. `Dockerfile` installs only runtime requirements into a virtual environment in a slim builder stage, then copies that environment and the app into a separate slim runtime stage.
+
+## Project layout
 
 ```text
 python-docker-image-optimization/
 ├── app/
 │   ├── __init__.py
+│   ├── __main__.py       # Windows/local Flask development entry point
 │   ├── config.py
 │   ├── database.py
 │   └── routes.py
 ├── db/
 │   └── init.sql
 ├── tests/
-│   └── test_app.py
+│   ├── conftest.py
+│   ├── test_app.py
+│   ├── test_database_integration.py
+│   ├── test_notes_integration.py
+│   └── test_validation_integration.py
+├── .github/workflows/tests.yml
 ├── .dockerignore
 ├── .env.example
 ├── .gitignore
 ├── Dockerfile
 ├── Dockerfile.baseline
 ├── docker-compose.yml
-├── README.md
+├── compare_images.ps1
+├── pytest.ini
 ├── requirements.txt
 ├── requirements-dev.txt
-├── pytest.ini
-└── .github/workflows/tests.yml
+├── PROJECT_FINAL_REPORT.md
+└── RELEASE_CHECKLIST.md
 ```
 
-## Build and run
+## Docker image approach
 
-### Windows PowerShell
+### Baseline
 
-```powershell
-cd "C:\Users\vikas\Image Optimization\python-docker-image-optimization"
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-pip install -r requirements-dev.txt
-Copy-Item .env.example .env
-```
+The baseline uses the full `python:3.12` image and installs runtime plus development requirements in a single stage. `requirements-dev.txt` includes `-r requirements.txt`, so the baseline copies both files before pip installs them. Tests are excluded from the build context and are not copied into the runtime image.
 
-### Run the application locally without Docker
+### Optimized image
 
-This project is built for Linux containers, so the containerized production server uses Gunicorn. For a quick local Windows check, start the Flask app package directly:
+The optimized Dockerfile uses two `python:3.12-slim` stages:
+
+1. **Builder:** creates `/opt/venv` and installs `requirements.txt` without pip cache.
+2. **Runtime:** copies only the runtime virtual environment, application and database schema; creates an `app` user; and starts Gunicorn on `0.0.0.0:5000`.
+
+The final image has no pytest dependency and no `gcc` executable. Docker inspect confirmed the configured user is `app` (UID 999 in the measured image).
+
+### `.dockerignore`
+
+`.dockerignore` reduces the files sent to the Docker build context and prevents ignored files from being copied into an image layer. It does **not** shrink the final image for files that were never copied into an image. This project excludes Git data, virtual environments, caches, tests, local env files, local database files, and temporary files while retaining both requirements files and the `app/` and `db/` directories.
+
+## Windows development and Linux container runtime
+
+Gunicorn is the production server in the Linux container; it is not the native Windows development server. On Windows, run:
 
 ```powershell
 python -m app
 ```
 
-The app will start on `http://127.0.0.1:5000`.
+This uses `app/__main__.py` to start Flask using `APP_HOST` and `APP_PORT`. For Docker, the Dockerfiles start Gunicorn in the container.
 
-### Run the database and application with Docker Compose
+## Setup and run
+
+Requirements: Python 3.12, Docker Desktop with Linux containers, and Docker Compose.
 
 ```powershell
+Set-Location "C:\Users\vikas\Image Optimization\python-docker-image-optimization"
+Copy-Item .env.example .env
+```
+
+Edit `.env` with development-only database settings before starting the Compose services. Do not commit `.env`; `.env.example` is tracked and contains placeholders.
+
+```powershell
+docker context use desktop-linux
+docker info
 docker compose up --build -d
+docker compose ps
+docker compose logs --tail=100 app
+docker compose logs --tail=100 db
 ```
 
-> Docker Desktop must be running before `docker compose` commands work. If the Docker daemon is unavailable, the commands cannot be executed in this environment.
+Compose waits for PostgreSQL's health check before starting the app. Database data is persisted in the named `postgres_data` volume. Do not use `docker compose down -v` if the volume may contain data.
 
-### Check the API
+## API
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/health` | Flask process health |
+| GET | `/ready` | PostgreSQL connectivity readiness |
+| GET | `/api/notes` | List notes |
+| POST | `/api/notes` | Create a note with string `title` and `description` |
+| DELETE | `/api/notes/<id>` | Delete a note; returns 404 if missing |
+
+Example PowerShell requests:
 
 ```powershell
-Invoke-RestMethod -Uri http://localhost:5000/health
-Invoke-RestMethod -Uri http://localhost:5000/ready
+Invoke-RestMethod http://localhost:5000/health
+Invoke-RestMethod http://localhost:5000/ready
+
+$body = @{
+    title = "Docker verification"
+    description = "A sample note"
+} | ConvertTo-Json
+
+$created = Invoke-RestMethod `
+    -Uri http://localhost:5000/api/notes `
+    -Method Post `
+    -ContentType "application/json" `
+    -Body $body
+
+Invoke-RestMethod http://localhost:5000/api/notes
+Invoke-RestMethod `
+    -Uri "http://localhost:5000/api/notes/$($created.note.id)" `
+    -Method Delete
 ```
 
-## API endpoints
+## Tests and CI
 
-- `GET /health` – returns application health info
-- `GET /ready` – checks PostgreSQL connectivity
-- `GET /api/notes` – fetches all notes
-- `POST /api/notes` – creates a note
-- `DELETE /api/notes/<id>` – deletes a note
+The tests cover route behavior, real PostgreSQL readiness and note persistence, input validation, and missing-note deletion. The integration fixtures initialize the idempotent schema from `db/init.sql` and clean up their own uniquely named test notes.
 
-## Testing
+For CI, `.github/workflows/tests.yml` provides PostgreSQL 16 with a health check, installs Python 3.12 dependencies, and runs pytest.
+
+The integration suite needs a reachable PostgreSQL with the same `DB_*` environment values as the test process. With the Compose database already running, the verified Docker-based test command is:
 
 ```powershell
-pytest -q
+$project = (Get-Location).Path
+$containerEnv = docker inspect python-docker-image-optimization-app-1 `
+    --format '{{range .Config.Env}}{{println .}}{{end}}'
+$dockerArgs = @(
+    "run", "--rm",
+    "--network", "python-docker-image-optimization_default",
+    "-v", "${project}:/project",
+    "--workdir", "/project"
+)
+foreach ($entry in $containerEnv) {
+    if ($entry -match "^DB_(NAME|USER|PASSWORD|PORT)=") {
+        $dockerArgs += @("--env", $entry)
+    }
+}
+$dockerArgs += @(
+    "--env", "DB_HOST=db",
+    "python-image-optimization:baseline",
+    "python", "-m", "pytest", "-v"
+)
+docker @dockerArgs
 ```
 
-## Docker image comparison
+The baseline image includes pytest; the optimized runtime intentionally does not. Run the lightweight Python syntax check with:
 
-The project includes both a baseline image and an optimized multi-stage image. Build both images and compare their sizes.
+```powershell
+python -m compileall app tests
+```
+
+## Build and compare image sizes
 
 ```powershell
 docker build -f Dockerfile.baseline -t python-image-optimization:baseline .
 docker build -f Dockerfile -t python-image-optimization:optimized .
-docker images
-docker image inspect python-image-optimization:baseline --format='{{.Size}}'
-docker image inspect python-image-optimization:optimized --format='{{.Size}}'
-```
-
-The baseline build originally failed because `requirements-dev.txt` includes `-r requirements.txt`, but `Dockerfile.baseline` copied only `requirements-dev.txt` into the build image. The include therefore pointed to a missing `/app/requirements.txt`. The fix copies both requirements files before installing the development set. The `tests/` copy instruction is absent, so the baseline does not try to copy a directory excluded by `.dockerignore`.
-
-Both images were built locally and measured with `docker image inspect ... --format='{{.Size}}'`. These are Docker's local uncompressed image-size totals in bytes, not compressed registry transfer sizes. `docker images` additionally reported local disk usage of 1.63GB for baseline and 220MB for optimized, and content-size figures of 419MB and 53.4MB respectively. Docker local disk usage can differ due to layer sharing and storage accounting; use the inspect values consistently for this comparison.
-
-| Metric | Baseline image | Optimized image |
-| --- | ---: | ---: |
-| Base image | `python:3.12` | `python:3.12-slim` |
-| Build strategy | Single-stage | Multi-stage |
-| Dependencies | Runtime + development | Runtime only |
-| Runtime user | Root (baseline comparison) | Non-root `app` |
-| Docker inspect size | 1,631,085,220 bytes (1,631.09 MB / 1,555.52 MiB) | 220,181,206 bytes (220.18 MB / 209.98 MiB) |
-| Space saved | 1,410,904,014 bytes (1,410.90 MB / 1,345.54 MiB) | — |
-| Reduction | 86.50% | — |
-
-Calculation:
-
-```text
-(1,631,085,220 - 220,181,206) / 1,631,085,220 * 100 = 86.50%
-```
-
-Verification commands:
-
-```powershell
-docker image inspect python-image-optimization:baseline --format='{{.Size}}'
-docker image inspect python-image-optimization:optimized --format='{{.Size}}'
 docker images python-image-optimization
+docker image inspect python-image-optimization:baseline --format='{{.Size}}'
+docker image inspect python-image-optimization:optimized --format='{{.Size}}'
+.\compare_images.ps1
 ```
 
-The `.dockerignore` file reduces the build context by excluding Git data, virtual environments, caches, tests, secrets files and local database files. It reduces final image size only when an excluded file would otherwise be copied into an image layer. `requirements.txt`, `requirements-dev.txt`, `app/`, and `db/` remain available to Docker.
+`compare_images.ps1` verifies both tags exist, reports inspect sizes in bytes, MB (1,000,000 bytes), MiB (1,048,576 bytes), and computes space saved and reduction. It accepts optional `-BaselineImage` and `-OptimizedImage` tag arguments.
 
-## Notes on Docker optimization
+### Current measured result
 
-Runtime verification used the Docker Compose PostgreSQL service. Both baseline and optimized containers returned success for `/health` and `/ready`; each also created, listed, and deleted a note. Deleting a nonexistent note returned HTTP 404. Compose reported both the PostgreSQL service and optimized app as healthy.
+Measured after rebuilding both images from the current source:
 
-The optimized container runs Gunicorn as the non-root `app` user. On Windows, run `python -m app` for a local development server; Gunicorn is intended for the Linux container.
+| Measure | Baseline | Optimized |
+|---|---:|---:|
+| Base | `python:3.12` | `python:3.12-slim` |
+| Strategy | Single-stage | Multi-stage |
+| Dependencies | Runtime + development | Runtime only |
+| Image inspect size | 1,631,085,255 bytes (1,631.09 MB / 1,555.52 MiB) | 220,181,283 bytes (220.18 MB / 209.98 MiB) |
+
+**Saved:** 1,410,903,972 bytes (1,410.90 MB / 1,345.54 MiB)
+
+**Reduction:** 86.50%
+
+Calculation: `(1,631,085,255 - 220,181,283) / 1,631,085,255 * 100`.
+
+These are local Docker image inspect size totals, not compressed registry sizes. `docker images` disk usage is a different metric that can depend on shared layers and Docker's storage accounting.
+
+## Verification notes
+
+- The original baseline build failure was caused by copying only `requirements-dev.txt` even though it includes `requirements.txt`. Both files are now copied before installation.
+- Both current images built successfully.
+- Both baseline and optimized containers were run against the Compose PostgreSQL service. Health, readiness, create/list/delete, invalid payload, and missing-note behavior were checked.
+- A uniquely named note survived an app-only restart and was then deleted. The PostgreSQL volume was preserved.
+- The Docker-based pytest run passed all 13 tests; `compileall` passed.
+- Docker inspect and runtime checks confirmed the optimized user, Gunicorn command, port, app/schema files, and absence of pytest and gcc.
+- GitHub Actions provides a PostgreSQL-backed test job; check the Actions page for the run associated with the latest commit.
+
+## Future improvements
+
+- Add a dedicated database migration tool for evolving schemas.
+- Add structured application logging and request IDs.
+- Pin base images by digest and automate dependency update review.
+- Add container vulnerability scanning and deployment-specific secret management.
 
 ## Conclusion
 
-Using a slim Python base image, multi-stage build, and runtime-only dependencies reduced the measured local image size by 86.50% while preserving the tested API and database behavior.
+This project demonstrates a measurable local image-size reduction while retaining the tested Flask and PostgreSQL behavior. The result is specific to the current Docker engine and image tags; rerun the comparison after changing dependencies or base images.

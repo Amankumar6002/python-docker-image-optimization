@@ -11,6 +11,7 @@ htmlcov/
 # Environment
 .env
 .env.*
+!.env.example
 
 # Editor/OS
 .vscode/
@@ -20,3 +21,6 @@ Thumbs.db
 
 # Docker
 *.log
+*.db
+*.sqlite
+*.sqlite3
