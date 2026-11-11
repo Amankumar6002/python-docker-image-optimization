@@ -37,7 +37,7 @@ Verification performed on 2026-11-11. Checkboxes represent completed work suppor
 - [x] Health, readiness, invalid input (400), and missing note (404) verified.
 - [x] `python -m compileall app tests` passed.
 - [x] GitHub Actions workflow config includes Python 3.12 and PostgreSQL 16 service.
-- [ ] Confirm GitHub Actions run for the final commit after push.
+- [x] GitHub Actions run #3 for commit `00b227b789b65822bad2f5be11e12162e8f16898` passed.
 
 ## Security and repository
 - [x] `.env`, `.venv`, Python caches, and local DB files excluded by Git ignore rules.
@@ -50,8 +50,8 @@ Verification performed on 2026-11-11. Checkboxes represent completed work suppor
 - [x] README describes architecture, Windows and Linux execution, Docker build/size measurement, APIs, tests, and measured result.
 - [x] `PROJECT_FINAL_REPORT.md` records evidence and outstanding items.
 - [x] `compare_images.ps1` documents and reproduces inspect-based size comparison.
-- [ ] Commit and push reviewed changes to existing `main` branch.
-- [ ] Verify remote commit and latest workflow result.
+- [x] Commit and push reviewed changes to existing `main` branch.
+- [x] Verify remote commit and workflow result.
 
 ## Measurement definitions
 

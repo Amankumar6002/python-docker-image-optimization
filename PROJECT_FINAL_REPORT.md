@@ -25,8 +25,8 @@ The Flask notes API and PostgreSQL integration were retained. The baseline image
 | Python compilation | PASS | `python -m compileall app tests` exited 0. |
 | Automated tests | PASS | Docker-based pytest run: 13 passed, 0 failed, exit code 0. |
 | Windows host pytest | BLOCKED | Direct host connection to `localhost:5432` returned PostgreSQL authentication failure for `appuser`; full suite passed inside the baseline image on the Compose network using the app container's DB settings. |
-| GitHub Actions | PENDING | Verify the run triggered by the final push. |
-| GitHub publication | PENDING | Push the current reviewed changes and verify remote `main`. |
+| GitHub Actions | PASS | Workflow run #3 for commit `00b227b789b65822bad2f5be11e12162e8f16898` completed successfully, including PostgreSQL service initialization and pytest. |
+| GitHub publication | PASS | Commit `00b227b789b65822bad2f5be11e12162e8f16898` was pushed to `main`; remote head matched and GitHub showed the expected project files. |
 
 ## Baseline build correction
 
@@ -69,8 +69,7 @@ These are not compressed registry sizes and should not be confused with `docker 
 
 ## Remaining work
 
-1. Commit and push the verified changes to the existing `main` branch without force-pushing.
-2. Verify the GitHub Actions run for that new commit; only then change the Actions status from PENDING.
-3. If running pytest natively on Windows, set `DB_*` environment values that match the reachable PostgreSQL instance; alternatively use the Docker test command in the README.
+1. If running pytest natively on Windows, set `DB_*` environment values that match the reachable PostgreSQL instance; alternatively use the Docker test command in the README.
+2. Configure production secrets outside source control before deploying beyond local development.
 
 The image sizes are specific to the Docker engine and base-image versions used here. Rebuild and rerun `compare_images.ps1` after changing those inputs.
