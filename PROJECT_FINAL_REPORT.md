@@ -30,6 +30,8 @@ The Flask notes API and PostgreSQL integration were retained and extended with a
 | Windows host pytest DB connection | BLOCKED | Host connection to `localhost:5432` returned PostgreSQL authentication failure, including when using the active Compose app settings; this is not counted as a native Windows DB test pass. |
 | GitHub Actions | PASS | Workflow run [#7](https://github.com/Amankumar6002/python-docker-image-optimization/actions/runs/43063834844) completed successfully for dashboard commit `1986f30c5d1760538ad389db9fd53c3817ef7a3c`. |
 | GitHub publication | PASS | Dashboard implementation and docs are published to the public repository's `main` branch; the pushed commit and README are visible remotely. |
+| Kubernetes client | PASS | `kubectl version --client` returned v1.36.1. |
+| Kubernetes cluster | BLOCKED | No current context was configured, `kubectl config get-contexts` was empty, `kubectl cluster-info` did not reach a Kubernetes API, and `kubectl get nodes` failed. No Kubernetes resources were applied. |
 
 ## Baseline build correction
 
@@ -81,3 +83,11 @@ These are not compressed registry sizes and should not be confused with `docker 
 2. Configure production secrets outside source control before deploying beyond local development.
 
 The image sizes are specific to the Docker engine and base-image versions used here. Rebuild and rerun `compare_images.ps1` after changing those inputs.
+
+## Kubernetes deployment preparation
+
+Kubernetes manifests are prepared under `k8s/` for the Flask Deployment and ClusterIP Service, PostgreSQL 16 Deployment and Service, app/schema ConfigMaps, and a separate 2 Gi PVC. The app spec uses two replicas of the locally built `python-image-optimization:optimized` image, sets a non-root identity, limits resources, and defines HTTP health/readiness probes. PostgreSQL uses UID/GID 70 and the PVC's matching fsGroup for volume access. Database credentials are created as a local Kubernetes Secret from process environment variables by `k8s/deploy.ps1`; only placeholder examples are committed.
+
+The cluster was unavailable during this task. Although the `kubectl` client is installed (v1.36.1), no current context was set and no nodes could be queried; cluster API requests failed. Consequently the Flask/PostgreSQL Kubernetes deployments, PVC binding, probes, service routing, dashboard, note persistence across Pod restarts, and scale-up/down remain **unverified**. No Kubernetes Secret was created. The Compose PostgreSQL volume was not changed.
+
+To proceed, open **Docker Desktop → Kubernetes → Create cluster**, wait for the cluster to report ready, then select the `docker-desktop` context using `kubectl config use-context docker-desktop`. Verify `kubectl cluster-info` and `kubectl get nodes` before providing the process-scoped `K8S_DB_USERNAME` and `K8S_DB_PASSWORD` values and running `.\k8s\deploy.ps1`. The script checks cluster, storage, image, and report availability and refuses to deploy to any non-Docker-Desktop context.

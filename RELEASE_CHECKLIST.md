@@ -47,6 +47,20 @@ Verification performed on 2026-11-11. Checkboxes represent completed work suppor
 - [x] GitHub Actions run #7 passed for dashboard commit `1986f30`.
 - [x] Native Windows pytest database authentication limitation is documented and not counted as a pass.
 
+## Kubernetes
+- [x] Kubernetes manifests prepared for namespace, app, PostgreSQL, services, ConfigMaps, PVC, and placeholder Secret example.
+- [x] Deployment script requires the Docker Desktop context and process-scoped credentials; no real Secret manifest is committed.
+- [x] Local optimized image is present: `python-image-optimization:optimized`; latest inspected size remains the measured 220,337,372 bytes.
+- [x] YAML syntax/resource references and PowerShell deployment-script syntax validated locally.
+- [ ] Docker Desktop Kubernetes context available and cluster API healthy.
+- [ ] Kubernetes API schema validation and `kubectl apply` completed.
+- [ ] Flask and PostgreSQL Deployments/Pods ready; PVC bound.
+- [ ] Kubernetes probes, DB readiness, dashboard, Notes API, and report endpoint verified.
+- [ ] Notes persist across Flask Pod restart.
+- [ ] Scale Flask Deployment to 3 replicas and back to 2; verify Pod counts.
+- [ ] Capture actual Kubernetes runtime/image availability and deployment evidence.
+- [ ] Do not delete the separate Kubernetes PVC or Compose PostgreSQL volume during cleanup.
+
 ## Security and repository
 - [x] `.env`, `.venv`, Python caches, and local DB files excluded by Git ignore rules.
 - [x] `.env`, `.venv`, tests, and local DB files excluded from Docker build context where appropriate.

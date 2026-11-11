@@ -63,6 +63,16 @@ python-docker-image-optimization/
 │   └── init.sql
 ├── reports/
 │   └── image-comparison.json
+├── k8s/
+│   ├── namespace.yaml
+│   ├── configmap.yaml
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   ├── postgres-deployment.yaml
+│   ├── postgres-service.yaml
+│   ├── postgres-pvc.yaml
+│   ├── deploy.ps1
+│   └── examples/secret.example.yaml
 ├── tests/
 │   ├── conftest.py
 │   ├── test_app.py
@@ -146,6 +156,104 @@ Open [http://localhost:5000](http://localhost:5000) for the dashboard. Its secti
 The dashboard gets measurements from `GET /api/optimization`, which reads and validates `reports/image-comparison.json` and calculates saved size and reduction from the recorded byte counts. If the report is missing, it displays: “Docker image measurements are not available yet. Build both Docker images and execute compare_images.ps1.” The API returns an unavailable response rather than fabricated or hard-coded measurements.
 
 The PowerShell script runs on the Docker host. The Flask container only reads the report via a read-only bind mount; it neither mounts the Docker socket nor runs Docker commands. The existing Notes API remains available for tests and demonstrations, but is not part of dashboard navigation.
+
+## Kubernetes on Docker Desktop
+
+Kubernetes is an orchestration layer for deploying and operating containers as Pods, Deployments, and Services. Docker Compose describes and starts this project's local multi-container setup; Kubernetes additionally reconciles desired replica counts, provides service discovery, probes, resource controls, and persistent claims. The Kubernetes PostgreSQL PVC is independent of the existing Compose `postgres_data` volume; neither is mounted into or copied from the other.
+
+### Kubernetes files
+
+| File | Purpose |
+|---|---|
+| `k8s/namespace.yaml` | Isolates resources in `docker-optimization`. |
+| `k8s/configmap.yaml` | Non-secret Flask/PostgreSQL settings and the existing schema initialization SQL. |
+| `k8s/deployment.yaml` | Two optimized Flask replicas, non-root security context, resources, report mount, and health probes. |
+| `k8s/service.yaml` | ClusterIP service for Flask; use port-forward for local browser access. |
+| `k8s/postgres-deployment.yaml` | Single PostgreSQL 16 Alpine pod, secret-backed credentials, probes, and persistent storage mount. |
+| `k8s/postgres-service.yaml` | Internal `postgres:5432` service used by Flask. |
+| `k8s/postgres-pvc.yaml` | Separate 2 Gi ReadWriteOnce PostgreSQL claim. |
+| `k8s/examples/secret.example.yaml` | Placeholder-only reference; never apply this example. |
+| `k8s/deploy.ps1` | Verifies the Docker Desktop context/cluster/image, creates the local Secret from process environment, syncs the measured report ConfigMap, applies manifests, and waits for rollouts. |
+
+### Prerequisites and cluster setup
+
+Use Docker Desktop with Kubernetes enabled, `kubectl`, PowerShell, and the already-built optimized image `python-image-optimization:optimized`. Verify the local image with `docker image inspect python-image-optimization:optimized`. Do not push this image to a public registry as part of this local workflow.
+
+If `kubectl config get-contexts` shows no Docker Desktop context or no current context, follow the [Docker Desktop Kubernetes setup guide](https://docs.docker.com/desktop/use-desktop/kubernetes/) and enable the cluster in the UI:
+
+1. Open **Docker Desktop → Kubernetes**.
+2. Select **Create cluster**, choose a cluster type, then select **Create**.
+3. Wait until Docker Desktop reports the cluster running.
+4. In PowerShell, run `kubectl config use-context docker-desktop`, then verify `kubectl config current-context`, `kubectl cluster-info`, and `kubectl get nodes`.
+
+The cluster was **not available at the time this configuration was prepared**: `kubectl version --client` returned v1.36.1, but there was no current context and no Kubernetes nodes; cluster API requests did not reach a Kubernetes API. Therefore no Kubernetes resource was applied and no cluster/runtime image availability is claimed. Docker Desktop's Kubernetes view and container runtime differ by provisioner/image-store mode; verify `kubectl get nodes -o wide` and the selected image store after cluster creation. The deployment uses `imagePullPolicy: Never`; if a Pod reports `ErrImageNeverPull`, follow the image import procedure for the actual Docker Desktop cluster type rather than assuming Docker's local image is visible.
+
+### Credentials and deployment
+
+The deployment script requires `K8S_DB_USERNAME` and `K8S_DB_PASSWORD` to be set in the current PowerShell process. It passes their UTF-8 encoded values to the Kubernetes API without writing them to a manifest or printing them. It creates a Kubernetes Secret named `db-credentials` after verifying the cluster. `k8s/examples/secret.example.yaml` contains placeholders only and is outside the non-recursive `kubectl apply -f k8s/` manifest directory.
+
+For an interactive local password entry without echoing it to the terminal:
+
+```powershell
+$env:K8S_DB_USERNAME = Read-Host "Local Kubernetes database username"
+$securePassword = Read-Host "Local Kubernetes database password" -AsSecureString
+$passwordPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
+try {
+    $env:K8S_DB_PASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($passwordPointer)
+    .\k8s\deploy.ps1
+}
+finally {
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($passwordPointer)
+    Remove-Item Env:K8S_DB_PASSWORD -ErrorAction SilentlyContinue
+    Remove-Item Env:K8S_DB_USERNAME -ErrorAction SilentlyContinue
+    Remove-Variable securePassword, passwordPointer -ErrorAction SilentlyContinue
+}
+```
+
+The script refuses to run unless the current context is `docker-desktop`, a node is Ready, a default StorageClass is available, the local optimized image exists, and the measurement report is present. It applies the namespace first, creates the Secret and report ConfigMap from local inputs, applies `k8s/`, then waits for PostgreSQL and Flask rollouts. The app uses `imagePullPolicy: Never`, so Kubernetes will not silently try to download this local-only tag from a registry. Verify Docker Desktop's selected Kubernetes provisioner/image store exposes the local image; the script reports the actual node runtime, and Pod events report image availability errors. Never use `kubectl apply -f k8s/examples/secret.example.yaml`.
+
+### Verify, access, and test
+
+After a successful deployment:
+
+```powershell
+kubectl get namespaces
+kubectl get pods,deployments,services,pvc -n docker-optimization
+kubectl describe pods -n docker-optimization
+kubectl logs deployment/postgres -n docker-optimization
+kubectl logs deployment/python-optimization -n docker-optimization
+```
+
+The Flask readiness probe calls `/ready` and only marks a replica Ready when PostgreSQL is reachable. The liveness probe calls `/health`. To use the ClusterIP service from the host, start this command in a separate PowerShell window:
+
+```powershell
+kubectl port-forward -n docker-optimization service/python-optimization 8080:80
+```
+
+Then verify the routes:
+
+```powershell
+Invoke-RestMethod http://localhost:8080/health
+Invoke-RestMethod http://localhost:8080/ready
+Invoke-RestMethod http://localhost:8080/api/notes
+Invoke-RestMethod http://localhost:8080/api/optimization
+```
+
+For a persistence check, create a uniquely named note through `/api/notes`, delete one Flask pod with `kubectl delete pod <flask-pod-name> -n docker-optimization`, wait for its replacement to become Ready, then fetch `/api/notes` and delete the test note. This checks PostgreSQL persistence across a Flask Pod restart without deleting the database claim.
+
+### Scale and cleanup
+
+Scale the Flask Deployment and return it to its original replica count:
+
+```powershell
+kubectl scale deployment/python-optimization --replicas=3 -n docker-optimization
+kubectl rollout status deployment/python-optimization -n docker-optimization
+kubectl get pods -n docker-optimization
+kubectl scale deployment/python-optimization --replicas=2 -n docker-optimization
+kubectl rollout status deployment/python-optimization -n docker-optimization
+```
+
+To remove only the Flask workload, delete its Deployment and Service. Do not delete the PVC unless intentionally discarding the Kubernetes PostgreSQL data; deleting the namespace also deletes its claim. The Compose `postgres_data` volume is separate and must not be deleted with `docker compose down -v`.
 
 ## API
 
