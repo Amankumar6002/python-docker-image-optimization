@@ -27,9 +27,9 @@ The Flask notes API and PostgreSQL integration were retained and extended with a
 | PostgreSQL volume | PASS | `python-docker-image-optimization_postgres_data` remained present; no volume deletion performed. |
 | Python compilation | PASS | `python -m compileall app tests` exited 0. |
 | Automated tests | PASS | Docker-based pytest run: 17 passed, 0 failed, exit code 0. |
-| Windows host pytest DB connection | BLOCKED | Direct host connection to `localhost:5432` returned PostgreSQL authentication failure for `appuser`; this is not counted as a native Windows DB test pass. |
-| GitHub Actions | PENDING | The dashboard changes require a workflow run on the commit being published; prior project workflow runs passed. |
-| GitHub publication | PENDING | Dashboard implementation and updated verification evidence are prepared for publication to the existing `main` branch. |
+| Windows host pytest DB connection | BLOCKED | Host connection to `localhost:5432` returned PostgreSQL authentication failure, including when using the active Compose app settings; this is not counted as a native Windows DB test pass. |
+| GitHub Actions | PASS | Workflow run [#7](https://github.com/Amankumar6002/python-docker-image-optimization/actions/runs/43063834844) completed successfully for dashboard commit `1986f30c5d1760538ad389db9fd53c3817ef7a3c`. |
+| GitHub publication | PASS | Dashboard implementation and docs are published to the public repository's `main` branch; the pushed commit and README are visible remotely. |
 
 ## Baseline build correction
 
@@ -77,8 +77,7 @@ These are not compressed registry sizes and should not be confused with `docker 
 
 ## Remaining work
 
-1. If running pytest natively on Windows, set `DB_*` environment values that match the reachable PostgreSQL instance; alternatively use the Docker test command in the README.
-2. Verify GitHub Actions for the dashboard publication commit.
-3. Configure production secrets outside source control before deploying beyond local development.
+1. If native Windows PostgreSQL testing is required, configure a host-reachable database with matching authentication; otherwise use the verified Docker test command in the README.
+2. Configure production secrets outside source control before deploying beyond local development.
 
 The image sizes are specific to the Docker engine and base-image versions used here. Rebuild and rerun `compare_images.ps1` after changing those inputs.

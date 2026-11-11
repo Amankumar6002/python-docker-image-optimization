@@ -261,9 +261,9 @@ These are local Docker image inspect size totals, not compressed registry sizes.
 - Docker Compose reported both the Flask app and PostgreSQL containers healthy. The named PostgreSQL volume was preserved.
 - The Docker-based pytest run passed all 17 tests; `compileall` passed. Browser validation also checked the rendered metrics, both operational status cards, section navigation, and a 390px-wide layout with no horizontal page overflow.
 - Docker inspect and runtime checks confirmed the optimized user, Gunicorn command, port, app/schema files, and absence of pytest and gcc.
-- The prior published revision's GitHub Actions run #6 passed before the dashboard changes; verify CI again for the dashboard publication commit.
+- GitHub Actions run [#7](https://github.com/Amankumar6002/python-docker-image-optimization/actions/runs/43063834844) passed for dashboard commit `1986f30c5d1760538ad389db9fd53c3817ef7a3c`.
 
-Native Windows pytest could not authenticate against PostgreSQL at `localhost:5432` using the host's default `DB_*` values. This is an environment configuration limitation, not a passing native-host integration run. The full 17-test suite passed inside Docker on the Compose network. CI uses its separately configured PostgreSQL service.
+Native Windows pytest could not authenticate against PostgreSQL at `localhost:5432`, including when the active Compose app's `DB_*` settings were forwarded to the host test process. This is an environment configuration limitation, not a passing native-host integration run. The full 17-test suite passed inside Docker on the Compose network. CI uses its separately configured PostgreSQL service.
 
 ## Future improvements
 

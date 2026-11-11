@@ -44,7 +44,7 @@ Verification performed on 2026-11-11. Checkboxes represent completed work suppor
 - [x] `python -m compileall app tests` passed.
 - [x] GitHub Actions workflow config includes Python 3.12 and PostgreSQL 16 service.
 - [x] Docker-network PostgreSQL test suite passed: 17 tests, exit code 0.
-- [x] Prior GitHub Actions runs passed; dashboard publication run remains to be verified.
+- [x] GitHub Actions run #7 passed for dashboard commit `1986f30`.
 - [x] Native Windows pytest database authentication limitation is documented and not counted as a pass.
 
 ## Security and repository
@@ -58,8 +58,8 @@ Verification performed on 2026-11-11. Checkboxes represent completed work suppor
 - [x] README describes dashboard/report workflow, architecture, Windows and Linux execution, Docker builds, APIs, tests, and current measured result.
 - [x] `PROJECT_FINAL_REPORT.md` records dashboard evidence and outstanding items.
 - [x] `compare_images.ps1` documents and reproduces inspect-based size comparison.
-- [ ] Publish dashboard implementation and documentation to the existing `main` branch.
-- [ ] Verify the publication commit and its GitHub Actions run.
+- [x] Publish dashboard implementation and documentation to the existing `main` branch.
+- [x] Verify remote commit `1986f30` and its successful GitHub Actions run #7.
 
 ## Measurement definitions
 
