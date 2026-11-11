@@ -52,8 +52,8 @@ Verification performed on 2026-11-11. Checkboxes represent completed work suppor
 - [x] README describes architecture, Windows and Linux execution, Docker build/size measurement, APIs, tests, and measured result.
 - [x] `PROJECT_FINAL_REPORT.md` records evidence and outstanding items.
 - [x] `compare_images.ps1` documents and reproduces inspect-based size comparison.
-- [ ] Commit and push these final measurement/API documentation updates to existing `main`.
-- [ ] Verify the new remote commit and associated workflow result.
+- [x] Commit and push final measurement/API documentation updates to existing `main`.
+- [x] Verify remote `main` and README publication; GitHub Actions runs #3 and #4 passed.
 
 ## Measurement definitions
 

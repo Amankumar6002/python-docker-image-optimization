@@ -25,8 +25,8 @@ The Flask notes API and PostgreSQL integration were retained. The baseline image
 | Python compilation | PASS | `python -m compileall app tests` exited 0. |
 | Automated tests | PASS | Docker-based pytest run: 13 passed, 0 failed, exit code 0. |
 | Windows host pytest DB connection | BLOCKED | Direct host connection to `localhost:5432` returned PostgreSQL authentication failure for `appuser`; this is not counted as a native Windows DB test pass. |
-| GitHub Actions | PASS | Runs #3 and #4 completed successfully. Run #3 included PostgreSQL service initialization and pytest for commit `00b227b789b65822bad2f5be11e12162e8f16898`; run #4 passed for commit `6230af8b4409d7f20e14beb61303b638e857dd6c`. |
-| GitHub publication | PASS | Commit `6230af8b4409d7f20e14beb61303b638e857dd6c` was pushed to `main`; remote head matched and GitHub showed the expected project files. |
+| GitHub Actions | PASS | Runs #3 and #4 completed successfully. Run #3 included PostgreSQL service initialization and pytest for commit `00b227b789b65822bad2f5be11e12162e8f16898`; run #4 passed for the documentation revision then on `main`. |
+| GitHub publication | PASS | The verified documentation updates were pushed to the existing `main` branch; remote head matched after push and GitHub showed the updated README. |
 
 ## Baseline build correction
 
