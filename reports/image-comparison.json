@@ -1,0 +1,16 @@
+{
+  "generated_at": "2026-11-11T16:55:47.8108232Z",
+  "measurement_method": "docker image inspect .Size",
+  "baseline_image": "python-image-optimization:baseline",
+  "optimized_image": "python-image-optimization:optimized",
+  "baseline_size_bytes": 1631163284,
+  "optimized_size_bytes": 220337372,
+  "baseline_size_mb": 1631.16,
+  "baseline_size_mib": 1555.6,
+  "optimized_size_mb": 220.34,
+  "optimized_size_mib": 210.13,
+  "saved_bytes": 1410825912,
+  "saved_mb": 1410.83,
+  "saved_mib": 1345.47,
+  "reduction_percent": 86.49
+}

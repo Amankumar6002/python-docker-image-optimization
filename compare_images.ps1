@@ -1,6 +1,7 @@
 param(
     [string]$BaselineImage = "python-image-optimization:baseline",
-    [string]$OptimizedImage = "python-image-optimization:optimized"
+    [string]$OptimizedImage = "python-image-optimization:optimized",
+    [string]$OutputPath = "reports/image-comparison.json"
 )
 
 $ErrorActionPreference = "Stop"
@@ -32,6 +33,29 @@ $reduction = if ($baselineBytes -gt 0) {
 } else {
     0
 }
+$timestamp = [DateTime]::UtcNow.ToString("o", [cultureinfo]::InvariantCulture)
+$report = [ordered]@{
+    generated_at = $timestamp
+    measurement_method = "docker image inspect .Size"
+    baseline_image = $images[0]
+    optimized_image = $images[1]
+    baseline_size_bytes = $baselineBytes
+    optimized_size_bytes = $optimizedBytes
+    baseline_size_mb = [math]::Round($baselineBytes / 1000000, 2)
+    baseline_size_mib = [math]::Round($baselineBytes / 1048576, 2)
+    optimized_size_mb = [math]::Round($optimizedBytes / 1000000, 2)
+    optimized_size_mib = [math]::Round($optimizedBytes / 1048576, 2)
+    saved_bytes = $savedBytes
+    saved_mb = [math]::Round($savedBytes / 1000000, 2)
+    saved_mib = [math]::Round($savedBytes / 1048576, 2)
+    reduction_percent = [math]::Round($reduction, 2)
+}
+
+$reportDirectory = Split-Path -Parent $OutputPath
+if ($reportDirectory) {
+    New-Item -ItemType Directory -Force -Path $reportDirectory | Out-Null
+}
+$report | ConvertTo-Json | Set-Content -Path $OutputPath -Encoding utf8
 
 $results = @(
     [pscustomobject]@{
@@ -59,3 +83,4 @@ Write-Output ("Space saved: {0} bytes ({1} MB / {2} MiB)" -f `
     ($savedBytes / 1048576).ToString("N2", [cultureinfo]::InvariantCulture))
 Write-Output ("Percentage reduction: {0}%" -f $reduction.ToString("N2", [cultureinfo]::InvariantCulture))
 Write-Output "Sizes are Docker image inspect byte totals, not compressed registry sizes or docker images disk usage."
+Write-Output ("JSON report written to: {0}" -f (Resolve-Path $OutputPath))

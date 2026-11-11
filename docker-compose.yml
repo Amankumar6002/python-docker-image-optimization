@@ -30,6 +30,9 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-change-me}
       APP_HOST: 0.0.0.0
       APP_PORT: 5000
+      IMAGE_COMPARISON_REPORT: /app/reports/image-comparison.json
+    volumes:
+      - ./reports:/app/reports:ro
     ports:
       - "5000:5000"
     depends_on:

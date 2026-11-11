@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10151b">
+  <title>Docker Image Optimization | DevOps Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Dashboard navigation">
+      <a class="brand" href="#overview" aria-label="Image optimization dashboard home">
+        <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span class="brand-copy"><strong>DOCKER LAB</strong><small>IMAGE OPTIMIZATION</small></span>
+      </a>
+
+      <div class="nav-caption">WORKSPACE</div>
+      <nav class="navigation">
+        <a class="nav-link active" href="#overview"><span class="nav-icon">⌂</span>Overview</a>
+        <a class="nav-link" href="#comparison"><span class="nav-icon">◫</span>Image comparison</a>
+        <a class="nav-link" href="#techniques"><span class="nav-icon">◈</span>Optimization</a>
+        <a class="nav-link" href="#architecture"><span class="nav-icon">⌘</span>Architecture</a>
+        <a class="nav-link" href="#health"><span class="nav-icon">◉</span>Live health</a>
+        <a class="nav-link" href="#about"><span class="nav-icon">ⓘ</span>About project</a>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="sidebar-status"><span class="pulse-dot"></span><span>LOCAL ENVIRONMENT</span></div>
+        <div class="sidebar-foot">Python 3.12 <span>·</span> Flask <span>·</span> PostgreSQL</div>
+      </div>
+    </aside>
+
+    <main class="main-content" id="overview">
+      <header class="topbar">
+        <div class="breadcrumbs"><span>Workspace</span><span class="crumb-separator">/</span><strong>Overview</strong></div>
+        <div class="topbar-actions">
+          <span class="live-indicator"><span class="pulse-dot"></span> LIVE MONITORING</span>
+          <button class="refresh-button" id="refresh-dashboard" type="button"><span aria-hidden="true">↻</span> Refresh</button>
+        </div>
+      </header>
+
+      <section class="page-section intro">
+        <div>
+          <div class="eyebrow"><span class="eyebrow-line"></span> CONTAINER PERFORMANCE</div>
+          <h1>Smaller images.<br><span>Faster delivery.</span></h1>
+          <p class="intro-copy">A measured look at how a production-minded Docker build trims the Python runtime without compromising the application.</p>
+        </div>
+        <div class="hero-aside">
+          <span class="hero-aside-label">LATEST MEASUREMENT</span>
+          <strong id="measurement-time">Waiting for report</strong>
+          <span class="hero-aside-note">Source: Docker image inspect</span>
+        </div>
+      </section>
+
+      <section class="metrics-grid" aria-label="Docker image metrics">
+        <article class="metric-card metric-baseline">
+          <div class="metric-heading"><span>BASELINE IMAGE</span><span class="metric-icon">▧</span></div>
+          <div class="metric-value" id="baseline-size">—</div>
+          <div class="metric-subtitle" id="baseline-tag">Waiting for measurement data</div>
+          <div class="metric-footer"><span class="legend-dot baseline-dot"></span> Full Python runtime</div>
+        </article>
+        <article class="metric-card metric-optimized">
+          <div class="metric-heading"><span>OPTIMIZED IMAGE</span><span class="metric-icon">▧</span></div>
+          <div class="metric-value" id="optimized-size">—</div>
+          <div class="metric-subtitle" id="optimized-tag">Waiting for measurement data</div>
+          <div class="metric-footer"><span class="legend-dot optimized-dot"></span> Slim multi-stage build</div>
+        </article>
+        <article class="metric-card metric-saved">
+          <div class="metric-heading"><span>SPACE SAVED</span><span class="metric-icon">↘</span></div>
+          <div class="metric-value" id="saved-size">—</div>
+          <div class="metric-subtitle" id="saved-bytes">Calculated from image sizes</div>
+          <div class="metric-footer"><span class="legend-dot saved-dot"></span> Smaller local image</div>
+        </article>
+        <article class="metric-card metric-reduction">
+          <div class="metric-heading"><span>SIZE REDUCTION</span><span class="metric-icon">%</span></div>
+          <div class="metric-value" id="reduction">—</div>
+          <div class="metric-subtitle">Baseline compared with optimized</div>
+          <div class="metric-footer"><span class="legend-dot saved-dot"></span> Based on Docker inspect bytes</div>
+        </article>
+      </section>
+
+      <div id="measurement-alert" class="notice" role="status" hidden></div>
+
+      <section class="content-grid page-section" id="comparison">
+        <article class="panel comparison-panel">
+          <div class="panel-heading">
+            <div><div class="eyebrow">MEASURED LOCALLY</div><h2>Image size comparison</h2></div>
+            <span class="unit-pill">MB <span>·</span> MiB</span>
+          </div>
+          <p class="panel-description">Docker inspect image-size totals. Each bar is scaled against the baseline image.</p>
+          <div class="bar-chart" aria-label="Image size comparison">
+            <div class="bar-row">
+              <div class="bar-label"><span>Baseline</span><strong id="baseline-chart-size">—</strong></div>
+              <div class="bar-track"><div class="bar-fill baseline-fill" id="baseline-bar"></div></div>
+              <div class="bar-unit" id="baseline-mib">— MiB</div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label"><span>Optimized</span><strong id="optimized-chart-size">—</strong></div>
+              <div class="bar-track"><div class="bar-fill optimized-fill" id="optimized-bar"></div></div>
+              <div class="bar-unit" id="optimized-mib">— MiB</div>
+            </div>
+          </div>
+          <div class="comparison-result"><span class="result-check">✓</span><span id="comparison-summary">Waiting for measured image sizes.</span></div>
+          <div class="panel-footnote">1 MB = 1,000,000 bytes. 1 MiB = 1,048,576 bytes. Not compressed registry size or disk usage.</div>
+        </article>
+
+        <article class="panel takeaway-panel">
+          <div class="panel-heading">
+            <div><div class="eyebrow">WHY IT MATTERS</div><h2>Less to ship</h2></div>
+            <span class="takeaway-mark" aria-hidden="true">↗</span>
+          </div>
+          <p>A smaller runtime image means fewer bytes to transfer and fewer packages carried into production.</p>
+          <div class="takeaway-list">
+            <div><span class="takeaway-number">01</span><span>Smaller Python base image</span></div>
+            <div><span class="takeaway-number">02</span><span>Build dependencies kept out of runtime</span></div>
+            <div><span class="takeaway-number">03</span><span>Non-root Gunicorn process</span></div>
+          </div>
+          <div class="callout-line"><span class="pulse-dot"></span><span>Measurements are generated on the Docker host</span></div>
+        </article>
+      </section>
+
+      <section class="page-section" id="techniques">
+        <div class="section-heading">
+          <div><div class="eyebrow">BUILD STRATEGY</div><h2>Optimization techniques</h2></div>
+          <p>Changes are focused on what ships in the final runtime image.</p>
+        </div>
+        <div class="technique-grid">
+          <article class="technique-card"><span class="technique-number">01</span><div class="technique-icon">⬡</div><h3>Python Slim base</h3><p>Uses <code>python:3.12-slim</code> instead of the full Python base image.</p><span class="technique-tag">LEANER BASE</span></article>
+          <article class="technique-card"><span class="technique-number">02</span><div class="technique-icon">⧉</div><h3>Multi-stage build</h3><p>Builds the runtime environment separately and copies only the needed virtual environment forward.</p><span class="technique-tag">BUILD / RUNTIME</span></article>
+          <article class="technique-card"><span class="technique-number">03</span><div class="technique-icon">⌁</div><h3>Runtime-only packages</h3><p>Development and test dependencies stay out of the optimized production image.</p><span class="technique-tag">FEWER PACKAGES</span></article>
+          <article class="technique-card"><span class="technique-number">04</span><div class="technique-icon">♙</div><h3>Non-root execution</h3><p>The container starts Gunicorn as the dedicated <code>app</code> user.</p><span class="technique-tag">REDUCED PRIVILEGE</span></article>
+        </div>
+      </section>
+
+      <section class="page-section" id="architecture">
+        <div class="section-heading">
+          <div><div class="eyebrow">SYSTEM OVERVIEW</div><h2>Application architecture</h2></div>
+          <p>Same Flask and PostgreSQL behavior in both image variants.</p>
+        </div>
+        <div class="architecture-panel">
+          <div class="arch-node"><span class="arch-node-icon">⌘</span><div><strong>Client</strong><small>Browser / PowerShell</small></div><span class="arch-port">HTTP</span></div>
+          <span class="arch-connector" aria-hidden="true"><i></i><b>5000</b><i></i></span>
+          <div class="arch-node arch-app"><span class="arch-node-icon">Py</span><div><strong>Flask API</strong><small>Gunicorn · non-root</small></div><span class="arch-port">APP</span></div>
+          <span class="arch-connector" aria-hidden="true"><i></i><b>5432</b><i></i></span>
+          <div class="arch-node arch-db"><span class="arch-node-icon">▤</span><div><strong>PostgreSQL</strong><small>Compose network</small></div><span class="arch-port">DB</span></div>
+        </div>
+        <div class="architecture-note"><span class="pulse-dot"></span> PostgreSQL data is stored in a persistent named Docker volume.</div>
+      </section>
+
+      <section class="page-section" id="health">
+        <div class="section-heading">
+          <div><div class="eyebrow">LIVE SERVICE STATUS</div><h2>Health &amp; readiness</h2></div>
+          <span class="refresh-interval">REFRESHES EVERY 30 SECONDS</span>
+        </div>
+        <div class="health-grid">
+          <article class="health-card"><div class="health-card-top"><span class="health-service-icon">Py</span><span class="status-badge status-unknown" id="app-status">CHECKING</span></div><h3>Flask application</h3><p>Process health via <code>/health</code></p><div class="health-card-foot"><span class="health-indicator" id="app-indicator"></span><span id="app-status-detail">Waiting for first check</span></div></article>
+          <article class="health-card"><div class="health-card-top"><span class="health-service-icon db-icon">▤</span><span class="status-badge status-unknown" id="db-status">CHECKING</span></div><h3>PostgreSQL database</h3><p>Connectivity via <code>/ready</code></p><div class="health-card-foot"><span class="health-indicator" id="db-indicator"></span><span id="db-status-detail">Waiting for first check</span></div></article>
+          <article class="health-card health-refresh-card"><div class="refresh-large">↻</div><h3>Keep an eye on it</h3><p>Health checks run periodically. Use refresh to check now.</p><span class="last-checked" id="last-checked">Not checked yet</span></article>
+        </div>
+      </section>
+
+      <section class="page-section about-section" id="about">
+        <div class="section-heading">
+          <div><div class="eyebrow">PROJECT DETAILS</div><h2>About this project</h2></div>
+        </div>
+        <div class="about-panel">
+          <p>This project demonstrates a measurable Docker image-size reduction for a Python 3.12 Flask and PostgreSQL application. The comparison report is produced by <code>compare_images.ps1</code> on the Docker host; the web app reads that JSON report and never accesses the Docker socket.</p>
+          <div class="about-details"><span><strong>LOCAL SERVER</strong> Flask development server on Windows</span><span><strong>CONTAINER SERVER</strong> Gunicorn on Linux</span><span><strong>METRIC SOURCE</strong> Docker image inspect</span></div>
+        </div>
+      </section>
+
+      <footer class="footer"><span>PYTHON DOCKER IMAGE OPTIMIZATION</span><span>Built for clarity. Measured with Docker.</span></footer>
+    </main>
+  </div>
+  <script src="{{ url_for('static', filename='dashboard.js') }}" defer></script>
+</body>
+</html>

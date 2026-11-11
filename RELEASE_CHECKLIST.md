@@ -9,6 +9,9 @@ Verification performed on 2026-11-11. Checkboxes represent completed work suppor
 - [x] Parameterized PostgreSQL statements remain in use.
 - [x] Invalid input and missing-note responses tested.
 - [x] Windows local entry point is `python -m app`; Linux containers use Gunicorn.
+- [x] Responsive dashboard renders overview, image comparison, optimization, architecture, health, and project details.
+- [x] Dashboard measurements are read and validated from host-generated JSON; missing and malformed reports show explicit unavailable states.
+- [x] Existing Notes API remains functional and is not included in dashboard navigation.
 
 ## Docker
 - [x] Docker Linux engine available.
@@ -19,8 +22,9 @@ Verification performed on 2026-11-11. Checkboxes represent completed work suppor
 - [x] Optimized image runs as non-root user `app` (UID 999).
 - [x] Gunicorn command, exposed port, and health check inspected.
 - [x] Image comparison PowerShell script passes and rejects missing tags.
-- [x] Inspect-based baseline/optimized comparison measured: 1,631,085,307 bytes vs 220,181,371 bytes.
-- [x] Saved 1,410,903,936 bytes (1,410.90 MB / 1,345.54 MiB), or 86.50%.
+- [x] Inspect-based baseline/optimized comparison measured: 1,631,163,284 bytes vs 220,337,372 bytes.
+- [x] Saved 1,410,825,912 bytes (1,410.83 MB / 1,345.47 MiB), or 86.49%.
+- [x] PowerShell comparison script writes the measurement report; Compose mounts it read-only without Docker socket access.
 
 ## PostgreSQL and Compose
 - [x] PostgreSQL service running and healthy.
@@ -31,14 +35,16 @@ Verification performed on 2026-11-11. Checkboxes represent completed work suppor
 - [x] Note ID 7 was created, retrieved, persisted across app-only restart, then deleted; final notes response was `[]`.
 
 ## Testing
-- [x] Docker-based pytest: 13 passed, 0 failed, exit code 0.
+- [x] Docker-based pytest: 17 passed, 0 failed, exit code 0.
+- [x] Dashboard report missing/valid/malformed cases and byte-based calculations covered.
+- [x] Browser checks passed for displayed metrics, health statuses, navigation, and 390px responsive layout; zero page errors.
 - [x] Live PostgreSQL readiness and notes CRUD integration tests passed.
 - [x] Both baseline and optimized running containers exercised against PostgreSQL.
 - [x] Health, readiness, invalid input (400), and missing note (404) verified.
 - [x] `python -m compileall app tests` passed.
 - [x] GitHub Actions workflow config includes Python 3.12 and PostgreSQL 16 service.
-- [x] Docker-network PostgreSQL test suite passed: 13 tests, exit code 0.
-- [x] GitHub Actions runs #3 and #4 passed; #3 ran the PostgreSQL-backed pytest job.
+- [x] Docker-network PostgreSQL test suite passed: 17 tests, exit code 0.
+- [x] Prior GitHub Actions runs passed; dashboard publication run remains to be verified.
 - [x] Native Windows pytest database authentication limitation is documented and not counted as a pass.
 
 ## Security and repository
@@ -49,11 +55,11 @@ Verification performed on 2026-11-11. Checkboxes represent completed work suppor
 - [ ] Review and configure production secrets outside source control before deploying beyond local development.
 
 ## Documentation and publication
-- [x] README describes architecture, Windows and Linux execution, Docker build/size measurement, APIs, tests, and measured result.
-- [x] `PROJECT_FINAL_REPORT.md` records evidence and outstanding items.
+- [x] README describes dashboard/report workflow, architecture, Windows and Linux execution, Docker builds, APIs, tests, and current measured result.
+- [x] `PROJECT_FINAL_REPORT.md` records dashboard evidence and outstanding items.
 - [x] `compare_images.ps1` documents and reproduces inspect-based size comparison.
-- [x] Commit and push final measurement/API documentation updates to existing `main`.
-- [x] Verify remote `main` and README publication; GitHub Actions runs #3 and #4 passed.
+- [ ] Publish dashboard implementation and documentation to the existing `main` branch.
+- [ ] Verify the publication commit and its GitHub Actions run.
 
 ## Measurement definitions
 

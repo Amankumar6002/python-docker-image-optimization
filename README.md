@@ -2,7 +2,7 @@
 
 **Reducing Docker image size with Python Slim images and multi-stage builds**
 
-This project is a small Flask REST API backed by PostgreSQL. It compares a deliberately unoptimized single-stage Docker image with a multi-stage production image built on `python:3.12-slim`.
+This project is a Flask and PostgreSQL application with a responsive Docker image optimization dashboard. It compares a deliberately unoptimized single-stage Docker image with a multi-stage production image built on `python:3.12-slim`.
 
 ## Objectives
 
@@ -22,6 +22,8 @@ The original 1.5 GB scenario is a reference point, not a promised baseline resul
 - Parameterized SQL, note validation and CRUD API
 - Compose health checks and a persistent named database volume
 - GitHub Actions workflow with a PostgreSQL service
+- Responsive dashboard with measured image sizes and live application/database status
+- Host-generated JSON measurement report; the Flask container has no Docker socket access
 
 ## Architecture
 
@@ -29,7 +31,7 @@ The original 1.5 GB scenario is a reference point, not a promised baseline resul
 PowerShell / HTTP client
           |
           v
-Flask + Gunicorn container (port 5000)
+Flask dashboard + API + Gunicorn container (port 5000)
           |
           | Compose network; DB_HOST=db
           v
@@ -37,6 +39,9 @@ PostgreSQL container (port 5432)
           |
           v
 Named volume: postgres_data
+
+Docker host -- compare_images.ps1 --> reports/image-comparison.json
+                                      (read-only bind mount; no Docker socket)
 ```
 
 `Dockerfile.baseline` packages runtime and pytest dependencies in one full Python image. `Dockerfile` installs only runtime requirements into a virtual environment in a slim builder stage, then copies that environment and the app into a separate slim runtime stage.
@@ -49,13 +54,19 @@ python-docker-image-optimization/
 │   ├── __init__.py
 │   ├── __main__.py       # Windows/local Flask development entry point
 │   ├── config.py
+│   ├── dashboard.py      # Safely reads and validates the host-generated report
 │   ├── database.py
-│   └── routes.py
+│   ├── routes.py
+│   ├── static/           # Dashboard CSS and JavaScript
+│   └── templates/        # Server-rendered dashboard
 ├── db/
 │   └── init.sql
+├── reports/
+│   └── image-comparison.json
 ├── tests/
 │   ├── conftest.py
 │   ├── test_app.py
+│   ├── test_dashboard.py
 │   ├── test_database_integration.py
 │   ├── test_notes_integration.py
 │   └── test_validation_integration.py
@@ -117,13 +128,24 @@ Edit `.env` with development-only database settings before starting the Compose 
 ```powershell
 docker context use desktop-linux
 docker info
+docker build -f Dockerfile.baseline -t python-image-optimization:baseline .
+docker build -f Dockerfile -t python-image-optimization:optimized .
+.\compare_images.ps1
 docker compose up --build -d
 docker compose ps
 docker compose logs --tail=100 app
 docker compose logs --tail=100 db
 ```
 
-Compose waits for PostgreSQL's health check before starting the app. Database data is persisted in the named `postgres_data` volume. Do not use `docker compose down -v` if the volume may contain data.
+`compare_images.ps1` writes the measured values to `reports/image-comparison.json`. Compose mounts that directory read-only into the app. Re-run the script after rebuilding either image so the dashboard report reflects the current tags. Compose waits for PostgreSQL's health check before starting the app. Database data is persisted in the named `postgres_data` volume. Do not use `docker compose down -v` if the volume may contain data.
+
+## Optimization dashboard
+
+Open [http://localhost:5000](http://localhost:5000) for the dashboard. Its sections cover measured image sizes, build techniques, application architecture, live Flask/PostgreSQL health, and project details. The Refresh button reloads measurements and checks service status; the status cards also refresh every 30 seconds.
+
+The dashboard gets measurements from `GET /api/optimization`, which reads and validates `reports/image-comparison.json` and calculates saved size and reduction from the recorded byte counts. If the report is missing, it displays: “Docker image measurements are not available yet. Build both Docker images and execute compare_images.ps1.” The API returns an unavailable response rather than fabricated or hard-coded measurements.
+
+The PowerShell script runs on the Docker host. The Flask container only reads the report via a read-only bind mount; it neither mounts the Docker socket nor runs Docker commands. The existing Notes API remains available for tests and demonstrations, but is not part of dashboard navigation.
 
 ## API
 
@@ -131,6 +153,8 @@ Compose waits for PostgreSQL's health check before starting the app. Database da
 |---|---|---|
 | GET | `/health` | Flask process health |
 | GET | `/ready` | PostgreSQL connectivity readiness |
+| GET | `/` | Responsive Docker optimization dashboard |
+| GET | `/api/optimization` | Validated measurements and derived comparison metrics |
 | GET | `/api/notes` | List notes |
 | POST | `/api/notes` | Create a note with string `title` and `description` |
 | DELETE | `/api/notes/<id>` | Delete a note; returns 404 if missing |
@@ -160,7 +184,7 @@ Invoke-RestMethod `
 
 ## Tests and CI
 
-The tests cover route behavior, real PostgreSQL readiness and note persistence, input validation, and missing-note deletion. The integration fixtures initialize the idempotent schema from `db/init.sql` and clean up their own uniquely named test notes.
+The tests cover route behavior, dashboard rendering and report handling, real PostgreSQL readiness and note persistence, input validation, and missing-note deletion. The integration fixtures initialize the idempotent schema from `db/init.sql` and clean up their own uniquely named test notes.
 
 For CI, `.github/workflows/tests.yml` provides PostgreSQL 16 with a health check, installs Python 3.12 dependencies, and runs pytest.
 
@@ -217,13 +241,13 @@ Measured after rebuilding both images from the current source:
 | Base | `python:3.12` | `python:3.12-slim` |
 | Strategy | Single-stage | Multi-stage |
 | Dependencies | Runtime + development | Runtime only |
-| Image inspect size | 1,631,085,307 bytes (1,631.09 MB / 1,555.52 MiB) | 220,181,371 bytes (220.18 MB / 209.98 MiB) |
+| Image inspect size | 1,631,163,284 bytes (1,631.16 MB / 1,555.60 MiB) | 220,337,372 bytes (220.34 MB / 210.13 MiB) |
 
-**Saved:** 1,410,903,936 bytes (1,410.90 MB / 1,345.54 MiB)
+**Saved:** 1,410,825,912 bytes (1,410.83 MB / 1,345.47 MiB)
 
-**Reduction:** 86.50%
+**Reduction:** 86.49%
 
-Calculation: `(1,631,085,307 - 220,181,371) / 1,631,085,307 * 100 = 86.50%`.
+Calculation: `(1,631,163,284 - 220,337,372) / 1,631,163,284 * 100 = 86.49%`.
 
 These are local Docker image inspect size totals, not compressed registry sizes. `docker images` disk usage is a different metric that can depend on shared layers and Docker's storage accounting.
 
@@ -235,11 +259,11 @@ These are local Docker image inspect size totals, not compressed registry sizes.
 - The final recorded API test passed `GET /health`, `GET /ready`, `GET /api/notes`, `POST /api/notes`, and `DELETE /api/notes/7`.
 - Note ID 7 was created, retrieved, persisted across an application-container restart, and then deleted. The final `GET /api/notes` returned an empty array (`[]`).
 - Docker Compose reported both the Flask app and PostgreSQL containers healthy. The named PostgreSQL volume was preserved.
-- The Docker-based pytest run passed all 13 tests; `compileall` passed.
+- The Docker-based pytest run passed all 17 tests; `compileall` passed. Browser validation also checked the rendered metrics, both operational status cards, section navigation, and a 390px-wide layout with no horizontal page overflow.
 - Docker inspect and runtime checks confirmed the optimized user, Gunicorn command, port, app/schema files, and absence of pytest and gcc.
-- GitHub Actions run #3 passed the PostgreSQL-backed test workflow for commit `00b227b789b65822bad2f5be11e12162e8f16898`; run #4 passed for documentation commit `6230af8b4409d7f20e14beb61303b638e857dd6c`.
+- The prior published revision's GitHub Actions run #6 passed before the dashboard changes; verify CI again for the dashboard publication commit.
 
-Native Windows pytest could not authenticate against PostgreSQL at `localhost:5432` using the host's default `DB_*` values. This is an environment configuration limitation, not a passing native-host integration run. The full 13-test suite passed inside Docker on the Compose network, and CI passed using its configured PostgreSQL service.
+Native Windows pytest could not authenticate against PostgreSQL at `localhost:5432` using the host's default `DB_*` values. This is an environment configuration limitation, not a passing native-host integration run. The full 17-test suite passed inside Docker on the Compose network. CI uses its separately configured PostgreSQL service.
 
 ## Future improvements
 
