@@ -24,9 +24,9 @@ The Flask notes API and PostgreSQL integration were retained. The baseline image
 | PostgreSQL volume | PASS | `python-docker-image-optimization_postgres_data` remained present; no volume deletion performed. |
 | Python compilation | PASS | `python -m compileall app tests` exited 0. |
 | Automated tests | PASS | Docker-based pytest run: 13 passed, 0 failed, exit code 0. |
-| Windows host pytest | BLOCKED | Direct host connection to `localhost:5432` returned PostgreSQL authentication failure for `appuser`; full suite passed inside the baseline image on the Compose network using the app container's DB settings. |
-| GitHub Actions | PASS | Workflow run #3 for commit `00b227b789b65822bad2f5be11e12162e8f16898` completed successfully, including PostgreSQL service initialization and pytest. |
-| GitHub publication | PASS | Commit `00b227b789b65822bad2f5be11e12162e8f16898` was pushed to `main`; remote head matched and GitHub showed the expected project files. |
+| Windows host pytest DB connection | BLOCKED | Direct host connection to `localhost:5432` returned PostgreSQL authentication failure for `appuser`; this is not counted as a native Windows DB test pass. |
+| GitHub Actions | PASS | Runs #3 and #4 completed successfully. Run #3 included PostgreSQL service initialization and pytest for commit `00b227b789b65822bad2f5be11e12162e8f16898`; run #4 passed for commit `6230af8b4409d7f20e14beb61303b638e857dd6c`. |
+| GitHub publication | PASS | Commit `6230af8b4409d7f20e14beb61303b638e857dd6c` was pushed to `main`; remote head matched and GitHub showed the expected project files. |
 
 ## Baseline build correction
 
@@ -41,11 +41,11 @@ Measured after rebuilding both images using Docker image inspect size values (un
 | Base image | `python:3.12` | `python:3.12-slim` |
 | Build strategy | Single-stage | Multi-stage |
 | Dependencies | Runtime + development | Runtime only |
-| Inspect size | 1,631,085,255 bytes (1,631.09 MB / 1,555.52 MiB) | 220,181,283 bytes (220.18 MB / 209.98 MiB) |
-| Space saved | 1,410,903,972 bytes (1,410.90 MB / 1,345.54 MiB) | — |
+| Inspect size | 1,631,085,307 bytes (1,631.09 MB / 1,555.52 MiB) | 220,181,371 bytes (220.18 MB / 209.98 MiB) |
+| Space saved | 1,410,903,936 bytes (1,410.90 MB / 1,345.54 MiB) | — |
 | Reduction | 86.50% | — |
 
-Formula: `(1,631,085,255 - 220,181,283) / 1,631,085,255 * 100`.
+Formula: `(1,631,085,307 - 220,181,371) / 1,631,085,307 * 100` = **86.50%**.
 
 These are not compressed registry sizes and should not be confused with `docker images` disk usage or content-size columns.
 
@@ -56,7 +56,8 @@ These are not compressed registry sizes and should not be confused with `docker 
 - Both the optimized app and a separately run baseline container returned successful `/health` and `/ready` responses.
 - Each container was tested for note creation, list visibility, and deletion.
 - Invalid non-string note input returned HTTP 400; nonexistent note deletion returned HTTP 404.
-- A uniquely named API note remained present across `docker compose restart app`. Only that test record was deleted afterward.
+- The final recorded API test passed `GET /health`, `GET /ready`, `GET /api/notes`, `POST /api/notes`, and `DELETE /api/notes/7`.
+- Note ID 7 was created, retrieved, retained across an application-container restart, and then deleted. The final `GET /api/notes` response was `[]`.
 - The named PostgreSQL volume was preserved.
 
 ## Security and source handling

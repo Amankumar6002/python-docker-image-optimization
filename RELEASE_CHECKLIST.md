@@ -19,8 +19,8 @@ Verification performed on 2026-11-11. Checkboxes represent completed work suppor
 - [x] Optimized image runs as non-root user `app` (UID 999).
 - [x] Gunicorn command, exposed port, and health check inspected.
 - [x] Image comparison PowerShell script passes and rejects missing tags.
-- [x] Inspect-based baseline/optimized comparison measured: 1,631,085,255 bytes vs 220,181,283 bytes.
-- [x] Saved 1,410,903,972 bytes (1,410.90 MB / 1,345.54 MiB), or 86.50%.
+- [x] Inspect-based baseline/optimized comparison measured: 1,631,085,307 bytes vs 220,181,371 bytes.
+- [x] Saved 1,410,903,936 bytes (1,410.90 MB / 1,345.54 MiB), or 86.50%.
 
 ## PostgreSQL and Compose
 - [x] PostgreSQL service running and healthy.
@@ -28,7 +28,7 @@ Verification performed on 2026-11-11. Checkboxes represent completed work suppor
 - [x] Application database readiness confirmed connected.
 - [x] Compose config uses `db` service hostname and health-based startup dependency.
 - [x] Named volume `python-docker-image-optimization_postgres_data` confirmed and retained.
-- [x] API note persisted across app-only restart; only the test note was deleted.
+- [x] Note ID 7 was created, retrieved, persisted across app-only restart, then deleted; final notes response was `[]`.
 
 ## Testing
 - [x] Docker-based pytest: 13 passed, 0 failed, exit code 0.
@@ -37,7 +37,9 @@ Verification performed on 2026-11-11. Checkboxes represent completed work suppor
 - [x] Health, readiness, invalid input (400), and missing note (404) verified.
 - [x] `python -m compileall app tests` passed.
 - [x] GitHub Actions workflow config includes Python 3.12 and PostgreSQL 16 service.
-- [x] GitHub Actions run #3 for commit `00b227b789b65822bad2f5be11e12162e8f16898` passed.
+- [x] Docker-network PostgreSQL test suite passed: 13 tests, exit code 0.
+- [x] GitHub Actions runs #3 and #4 passed; #3 ran the PostgreSQL-backed pytest job.
+- [x] Native Windows pytest database authentication limitation is documented and not counted as a pass.
 
 ## Security and repository
 - [x] `.env`, `.venv`, Python caches, and local DB files excluded by Git ignore rules.
@@ -50,8 +52,8 @@ Verification performed on 2026-11-11. Checkboxes represent completed work suppor
 - [x] README describes architecture, Windows and Linux execution, Docker build/size measurement, APIs, tests, and measured result.
 - [x] `PROJECT_FINAL_REPORT.md` records evidence and outstanding items.
 - [x] `compare_images.ps1` documents and reproduces inspect-based size comparison.
-- [x] Commit and push reviewed changes to existing `main` branch.
-- [x] Verify remote commit and workflow result.
+- [ ] Commit and push these final measurement/API documentation updates to existing `main`.
+- [ ] Verify the new remote commit and associated workflow result.
 
 ## Measurement definitions
 

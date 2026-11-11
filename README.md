@@ -217,13 +217,13 @@ Measured after rebuilding both images from the current source:
 | Base | `python:3.12` | `python:3.12-slim` |
 | Strategy | Single-stage | Multi-stage |
 | Dependencies | Runtime + development | Runtime only |
-| Image inspect size | 1,631,085,255 bytes (1,631.09 MB / 1,555.52 MiB) | 220,181,283 bytes (220.18 MB / 209.98 MiB) |
+| Image inspect size | 1,631,085,307 bytes (1,631.09 MB / 1,555.52 MiB) | 220,181,371 bytes (220.18 MB / 209.98 MiB) |
 
-**Saved:** 1,410,903,972 bytes (1,410.90 MB / 1,345.54 MiB)
+**Saved:** 1,410,903,936 bytes (1,410.90 MB / 1,345.54 MiB)
 
 **Reduction:** 86.50%
 
-Calculation: `(1,631,085,255 - 220,181,283) / 1,631,085,255 * 100`.
+Calculation: `(1,631,085,307 - 220,181,371) / 1,631,085,307 * 100 = 86.50%`.
 
 These are local Docker image inspect size totals, not compressed registry sizes. `docker images` disk usage is a different metric that can depend on shared layers and Docker's storage accounting.
 
@@ -232,10 +232,14 @@ These are local Docker image inspect size totals, not compressed registry sizes.
 - The original baseline build failure was caused by copying only `requirements-dev.txt` even though it includes `requirements.txt`. Both files are now copied before installation.
 - Both current images built successfully.
 - Both baseline and optimized containers were run against the Compose PostgreSQL service. Health, readiness, create/list/delete, invalid payload, and missing-note behavior were checked.
-- A uniquely named note survived an app-only restart and was then deleted. The PostgreSQL volume was preserved.
+- The final recorded API test passed `GET /health`, `GET /ready`, `GET /api/notes`, `POST /api/notes`, and `DELETE /api/notes/7`.
+- Note ID 7 was created, retrieved, persisted across an application-container restart, and then deleted. The final `GET /api/notes` returned an empty array (`[]`).
+- Docker Compose reported both the Flask app and PostgreSQL containers healthy. The named PostgreSQL volume was preserved.
 - The Docker-based pytest run passed all 13 tests; `compileall` passed.
 - Docker inspect and runtime checks confirmed the optimized user, Gunicorn command, port, app/schema files, and absence of pytest and gcc.
-- GitHub Actions provides a PostgreSQL-backed test job; check the Actions page for the run associated with the latest commit.
+- GitHub Actions run #3 passed the PostgreSQL-backed test workflow for commit `00b227b789b65822bad2f5be11e12162e8f16898`; run #4 passed for documentation commit `6230af8b4409d7f20e14beb61303b638e857dd6c`.
+
+Native Windows pytest could not authenticate against PostgreSQL at `localhost:5432` using the host's default `DB_*` values. This is an environment configuration limitation, not a passing native-host integration run. The full 13-test suite passed inside Docker on the Compose network, and CI passed using its configured PostgreSQL service.
 
 ## Future improvements
 
