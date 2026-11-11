@@ -32,6 +32,7 @@ The Flask notes API and PostgreSQL integration were retained and extended with a
 | GitHub publication | PASS | Dashboard implementation and docs are published to the public repository's `main` branch; the pushed commit and README are visible remotely. |
 | Kubernetes client | PASS | `kubectl version --client` returned v1.36.1. |
 | Kubernetes cluster | BLOCKED | No current context was configured, `kubectl config get-contexts` was empty, `kubectl cluster-info` did not reach a Kubernetes API, and `kubectl get nodes` failed. No Kubernetes resources were applied. |
+| Kubernetes configuration publication | PASS | Commit `41c68ff6665f9b8ebb210cd5da9ebcd0ec91ed62` is on remote `main`; GitHub Actions run [#9](https://github.com/Amankumar6002/python-docker-image-optimization/actions/runs/43071572228) passed. |
 
 ## Baseline build correction
 

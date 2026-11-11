@@ -52,6 +52,7 @@ Verification performed on 2026-11-11. Checkboxes represent completed work suppor
 - [x] Deployment script requires the Docker Desktop context and process-scoped credentials; no real Secret manifest is committed.
 - [x] Local optimized image is present: `python-image-optimization:optimized`; latest inspected size remains the measured 220,337,372 bytes.
 - [x] YAML syntax/resource references and PowerShell deployment-script syntax validated locally.
+- [x] Kubernetes configuration published to `main`; GitHub Actions run #9 passed.
 - [ ] Docker Desktop Kubernetes context available and cluster API healthy.
 - [ ] Kubernetes API schema validation and `kubectl apply` completed.
 - [ ] Flask and PostgreSQL Deployments/Pods ready; PVC bound.
