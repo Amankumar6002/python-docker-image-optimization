@@ -1,81 +1,45 @@
 # Release Checklist
 
-## Project
-Image Optimization (Python) – Reducing Docker Image Size Using Multi-Stage Builds
+## Verified
+- [x] Flask API and PostgreSQL integration are configured through environment variables.
+- [x] Baseline Dockerfile uses `python:3.12` and installs runtime plus development requirements.
+- [x] Baseline copies both `requirements.txt` and `requirements-dev.txt`.
+- [x] Baseline does not copy `tests/`, which `.dockerignore` excludes.
+- [x] Optimized Dockerfile uses Python slim multi-stage build and runtime-only dependencies.
+- [x] Optimized runtime uses the non-root `app` user and Gunicorn.
+- [x] `.dockerignore` excludes Git data, virtual environments, caches, tests, env files, local DB files, and temporary files while retaining files needed for builds.
+- [x] Baseline image build succeeded.
+- [x] Optimized image build succeeded.
+- [x] Compose PostgreSQL and optimized app reported healthy.
+- [x] Baseline and optimized app containers returned success for `/health` and `/ready`.
+- [x] Both images created, listed, and deleted notes; nonexistent deletion returned HTTP 404.
 
-## Release readiness status
-- [x] Source code created and organized
-- [x] Flask application implemented
-- [x] PostgreSQL configuration and dependency injection set up via environment variables
-- [x] Docker baseline image defined
-- [x] Optimized multi-stage Dockerfile defined
-- [x] `.dockerignore` created
-- [x] Docker Compose configuration created
-- [x] Python tests implemented and passing
-- [x] README documentation prepared
-- [ ] Real Docker image builds executed on a machine with Docker Desktop or a running Docker engine
-- [ ] Real image size comparison measured locally
-- [ ] Compose stack fully validated in a running Docker environment
+## Measured local Docker image sizes
+Measured with `docker image inspect`:
 
-## Required checks before release
-### 1. Local Python verification
-- [x] Install dependencies with `pip install -r requirements-dev.txt`
-- [x] Run `pytest -q`
-- [x] Confirm all tests pass
-- [x] Confirm local health endpoint works
+- Baseline: 1,631,085,220 bytes (1,631.09 MB / 1,555.52 MiB)
+- Optimized: 220,181,206 bytes (220.18 MB / 209.98 MiB)
+- Saved: 1,410,904,014 bytes (1,410.90 MB / 1,345.54 MiB)
+- Reduction: 86.50%
 
-### 2. Docker engine verification
-- [ ] Confirm `docker --version` works
-- [ ] Confirm `docker compose version` works
-- [ ] Confirm `docker info` shows a healthy engine
-- [ ] Ensure Docker Desktop is running
+These are local Docker image inspect sizes (uncompressed layer totals), not compressed registry sizes. The `docker images` output reported 1.63GB / 220MB disk usage and 419MB / 53.4MB content size. Those are different Docker storage measures.
 
-### 3. Docker image build verification
-- [ ] Run baseline build: `docker build -f Dockerfile.baseline -t python-image-optimization:baseline .`
-- [ ] Run optimized build: `docker build -f Dockerfile -t python-image-optimization:optimized .`
-- [ ] Confirm both builds complete successfully
-- [ ] Inspect both image sizes with `docker image inspect ... --format='{{.Size}}'`
-
-### 4. Compose verification
-- [ ] Run `docker compose up --build -d`
-- [ ] Confirm PostgreSQL is healthy
-- [ ] Confirm app container is healthy
-- [ ] Confirm endpoints return expected HTTP results
-
-### 5. API verification
-- [ ] `GET /health`
-- [ ] `GET /ready`
-- [ ] `GET /api/notes`
-- [ ] `POST /api/notes`
-- [ ] `DELETE /api/notes/<id>`
-- [ ] Invalid payload handling
-- [ ] Missing note deletion behavior
-
-### 6. GitHub preparation
-- [ ] Confirm repo root contains all required files
-- [ ] Ensure `.env` is not committed
-- [ ] Review `.gitignore`
-- [ ] Add project description and topics
-- [ ] Add badges or screenshots if desired
-- [ ] Create GitHub release notes
-
-## Verified local results
-- `pytest -q` completed successfully with 5 passing tests.
-- Local app health check was validated via `python -m app` and `Invoke-RestMethod http://127.0.0.1:5000/health`.
-- Readiness endpoint responded with a correct 503 when PostgreSQL was unavailable.
-
-## Blocker encountered
-Docker build and Compose validation are currently blocked in this environment because the Docker daemon is not running:
-
+## Reproduce the verification
 ```powershell
-docker info
+docker build -f Dockerfile.baseline -t python-image-optimization:baseline .
+docker build -f Dockerfile -t python-image-optimization:optimized .
+docker image inspect python-image-optimization:baseline --format='{{.Size}}'
+docker image inspect python-image-optimization:optimized --format='{{.Size}}'
+docker compose up --build -d
+docker compose ps
+docker compose logs app
+docker compose logs db
 ```
 
-Result:
+## Remaining release checks
+- [ ] Confirm intended GitHub repository remote and push the verified changes without force-pushing.
+- [ ] Confirm GitHub Actions test workflow status after push.
+- [ ] Replace development-only credentials before any non-local deployment.
+- [ ] Re-run image measurements after changing pinned dependencies or base image versions.
 
-```text
-failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine; check if the path is correct and if the daemon is running: open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.
-```
-
-## Final sign-off note
-The project is functionally ready for local Python validation and repository packaging, but the actual Docker image-size benchmarking must be performed on a machine with Docker Desktop running or a Linux Docker engine available.
+The existing Compose PostgreSQL volume was retained; do not remove it during cleanup if it may contain user data.

@@ -44,7 +44,8 @@ python-docker-image-optimization/
 ├── README.md
 ├── requirements.txt
 ├── requirements-dev.txt
-└── .venv/
+├── pytest.ini
+└── .github/workflows/tests.yml
 ```
 
 ## Build and run
@@ -111,22 +112,42 @@ docker image inspect python-image-optimization:baseline --format='{{.Size}}'
 docker image inspect python-image-optimization:optimized --format='{{.Size}}'
 ```
 
-Important: this environment does not currently have a live Docker daemon, so the actual image-size values were not measurable here. Run the commands above on a machine with Docker Desktop or a Linux Docker engine running, then replace the placeholders below with the actual values.
+The baseline build originally failed because `requirements-dev.txt` includes `-r requirements.txt`, but `Dockerfile.baseline` copied only `requirements-dev.txt` into the build image. The include therefore pointed to a missing `/app/requirements.txt`. The fix copies both requirements files before installing the development set. The `tests/` copy instruction is absent, so the baseline does not try to copy a directory excluded by `.dockerignore`.
 
-| Metric | Original image | Optimized image |
+Both images were built locally and measured with `docker image inspect ... --format='{{.Size}}'`. These are Docker's local uncompressed image-size totals in bytes, not compressed registry transfer sizes. `docker images` additionally reported local disk usage of 1.63GB for baseline and 220MB for optimized, and content-size figures of 419MB and 53.4MB respectively. Docker local disk usage can differ due to layer sharing and storage accounting; use the inspect values consistently for this comparison.
+
+| Metric | Baseline image | Optimized image |
 | --- | ---: | ---: |
-| Base image | Full Python | Python slim |
-| Dockerfile | Single-stage | Multi-stage |
+| Base image | `python:3.12` | `python:3.12-slim` |
+| Build strategy | Single-stage | Multi-stage |
 | Dependencies | Runtime + development | Runtime only |
-| Build tools | Kept in final image | Excluded from final image |
-| Measured image size | `<baseline size>` | `<optimized size>` |
-| Space saved | `<original - optimized>` | — |
-| Percentage reduction | `<((original - optimized) / original) * 100>` | — |
+| Runtime user | Root (baseline comparison) | Non-root `app` |
+| Docker inspect size | 1,631,085,220 bytes (1,631.09 MB / 1,555.52 MiB) | 220,181,206 bytes (220.18 MB / 209.98 MiB) |
+| Space saved | 1,410,904,014 bytes (1,410.90 MB / 1,345.54 MiB) | — |
+| Reduction | 86.50% | — |
+
+Calculation:
+
+```text
+(1,631,085,220 - 220,181,206) / 1,631,085,220 * 100 = 86.50%
+```
+
+Verification commands:
+
+```powershell
+docker image inspect python-image-optimization:baseline --format='{{.Size}}'
+docker image inspect python-image-optimization:optimized --format='{{.Size}}'
+docker images python-image-optimization
+```
+
+The `.dockerignore` file reduces the build context by excluding Git data, virtual environments, caches, tests, secrets files and local database files. It reduces final image size only when an excluded file would otherwise be copied into an image layer. `requirements.txt`, `requirements-dev.txt`, `app/`, and `db/` remain available to Docker.
 
 ## Notes on Docker optimization
 
-This project demonstrates that a multi-stage build, slim base image, and careful `.dockerignore` usage significantly reduce the final image size without changing the application behavior.
+Runtime verification used the Docker Compose PostgreSQL service. Both baseline and optimized containers returned success for `/health` and `/ready`; each also created, listed, and deleted a note. Deleting a nonexistent note returned HTTP 404. Compose reported both the PostgreSQL service and optimized app as healthy.
+
+The optimized container runs Gunicorn as the non-root `app` user. On Windows, run `python -m app` for a local development server; Gunicorn is intended for the Linux container.
 
 ## Conclusion
 
-Using a slim Python base image with a multi-stage build and only the runtime dependencies creates a smaller, more efficient container that is easier to deploy and maintain.
+Using a slim Python base image, multi-stage build, and runtime-only dependencies reduced the measured local image size by 86.50% while preserving the tested API and database behavior.

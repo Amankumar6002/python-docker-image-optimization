@@ -1,126 +1,65 @@
 # Project Final Report
 
-## Project title
+## Project
 Python Docker Image Optimization – Reducing Docker Image Size Using Multi-Stage Builds
 
-## Objective
-Create a complete, practical Python project that demonstrates how to reduce a bloated Docker image into a smaller, production-ready container using:
+## Summary
+The project packages a Flask notes API with PostgreSQL using two Docker builds: a deliberately less optimized full-Python baseline and a slim, multi-stage runtime image.
 
-- a slim Python base image
-- a multi-stage Docker build
-- minimal runtime dependencies
-- `.dockerignore`
-- careful application packaging
-- PostgreSQL connectivity with environment variables
+## Baseline build failure and fix
+`requirements-dev.txt` includes `-r requirements.txt`. The baseline Dockerfile copied only `requirements-dev.txt`, so pip could not open `/app/requirements.txt`. `Dockerfile.baseline` now copies both requirement files before running pip. Its `COPY tests` instruction is absent, consistent with `tests/` being excluded from the Docker build context.
 
-## Summary of implementation
-The project includes:
-
-- Flask application with note API endpoints
-- PostgreSQL connection layer using environment variables
-- Docker baseline image (`Dockerfile.baseline`)
-- Optimized multi-stage image (`Dockerfile`)
-- Docker Compose service for PostgreSQL and the app
-- `.dockerignore`, `.gitignore`, and `.env.example`
-- pytest-based checks for app behavior
-- README documentation for setup and usage
-
-## Files created
-- `app/__init__.py`
-- `app/__main__.py`
-- `app/config.py`
-- `app/database.py`
-- `app/routes.py`
-- `db/init.sql`
-- `tests/test_app.py`
-- `Dockerfile`
-- `Dockerfile.baseline`
-- `docker-compose.yml`
-- `.dockerignore`
-- `.gitignore`
-- `.env.example`
-- `requirements.txt`
-- `requirements-dev.txt`
-- `pytest.ini`
-- `README.md`
-
-## Verified status
-### Python validation
-Executed successfully:
+## Docker verification
+Both commands completed successfully:
 
 ```powershell
-cd "C:\Users\vikas\Image Optimization\python-docker-image-optimization"
-pytest -q
+docker build -f Dockerfile.baseline -t python-image-optimization:baseline .
+docker build -f Dockerfile -t python-image-optimization:optimized .
 ```
 
-Result:
+The optimized Dockerfile uses a Python slim builder and runtime stage, carries only the runtime virtual environment and application/database source into the final stage, excludes development dependencies, and runs Gunicorn as the non-root `app` user.
 
-```text
-5 passed in 0.88s
-```
+### Local image measurements
+The values below come from `docker image inspect ... --format='{{.Size}}'`. They are local image sizes in bytes representing the sum of uncompressed image layers. They are not compressed registry transfer sizes. Docker's `docker images` output also reported disk usage of 1.63GB (baseline) and 220MB (optimized) and content-size figures of 419MB and 53.4MB. Layer sharing/storage accounting can make disk-usage figures differ from the inspect total.
 
-### Local app startup validation
-Executed successfully:
+| Metric | Baseline | Optimized |
+| --- | ---: | ---: |
+| Base image | `python:3.12` | `python:3.12-slim` |
+| Build approach | Single-stage | Multi-stage |
+| Dependencies | Runtime + development | Runtime only |
+| Runtime user | Root | Non-root `app` |
+| Inspect size | 1,631,085,220 bytes / 1,631.09 MB / 1,555.52 MiB | 220,181,206 bytes / 220.18 MB / 209.98 MiB |
 
-```powershell
-cd "C:\Users\vikas\Image Optimization\python-docker-image-optimization"
-python -m app
-```
+Saved: 1,410,904,014 bytes = 1,410.90 MB = 1,345.54 MiB
+Reduction: `(1,631,085,220 - 220,181,206) / 1,631,085,220 * 100` = **86.50%**
 
-Health check result:
+## Runtime verification
+Docker Compose reported the PostgreSQL service and optimized application as healthy. The baseline image was also run in the Compose network.
 
-```powershell
-Invoke-RestMethod -Uri http://127.0.0.1:5000/health
-```
+Both app containers were checked:
 
-Output:
+- `/health` returned status `ok`.
+- `/ready` returned `ready` with database `connected`.
+- Creating, listing, and deleting notes succeeded.
+- Deleting a nonexistent note returned HTTP 404.
+- Gunicorn startup logs were inspected.
 
-```text
-service            status
--------            ------
-image-optimization ok
-```
+The Compose stack used `postgres:16-alpine` and its named `postgres_data` volume. The volume was not removed.
 
-### Readiness validation
-When PostgreSQL was unavailable, the application correctly returned an HTTP 503 response with a database-unavailable message.
+## Python test status
+The most recent previously recorded local pytest result was 5 passing tests. Docker build and endpoint validation were run during this verification. No Docker container pytest suite was executed.
 
-## Docker status
-Docker is installed, but the local daemon is not running in this environment. The runtime status is therefore blocked for actual image builds and Compose verification.
+## Files and configuration
+- Flask app: `app/`
+- PostgreSQL schema initialization: `db/init.sql`
+- Tests: `tests/`
+- Baseline image: `Dockerfile.baseline`
+- Optimized multi-stage image: `Dockerfile`
+- Compose: `docker-compose.yml`
+- Build-context exclusions: `.dockerignore`
+- Development environment example: `.env.example`
 
-Command attempted:
-
-```powershell
-docker info
-```
-
-Observed result:
-
-```text
-failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine; check if the path is correct and if the daemon is running: open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.
-```
-
-## What remains to complete on a Docker-enabled machine
-1. Build the baseline image
-2. Build the optimized image
-3. Inspect image sizes
-4. Compute size saved and percentage reduction
-5. Start the full Compose stack
-6. Validate health and database endpoints
-7. Create and delete notes through the API
-8. Confirm PostgreSQL persistence and network configuration
-
-## Final image comparison formula
-The final project expects the following values to be measured from Docker:
-
-```text
-Image Size Saved = Original Image Size - Optimized Image Size
-Percentage Reduction = ((Original Image Size - Optimized Image Size) / Original Image Size) * 100
-```
-
-Important: the project intentionally does not report a size reduction without actual local Docker image inspection results.
-
-## Recommendation
-The implementation is ready for GitHub and release packaging, but true final Docker benchmarking must be completed on a machine with Docker Desktop running or a Linux Docker engine available.
-
-## Final conclusion
-The codebase is clean, functionally validated at the Python layer, and structurally ready for Docker optimization work. The final Docker proof step remains dependent on the availability of a live Docker daemon.
+## Remaining work
+- GitHub push/publication is not verified by this Docker run.
+- No production credentials are supplied; change development-only `.env` values before any non-local use.
+- Docker inspect sizes are machine- and image-version-specific and should be remeasured after base-image updates.

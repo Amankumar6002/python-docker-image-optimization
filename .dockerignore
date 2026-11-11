@@ -18,4 +18,7 @@ __MACOSX/
 node_modules/
 *.tar
 *.zip
+*.db
+*.sqlite
+*.sqlite3
 tests/
